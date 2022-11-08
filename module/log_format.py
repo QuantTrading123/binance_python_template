@@ -67,9 +67,3 @@ class SaveLog:
     def critical(self, c):
         self.check_time()
         self.logger.critical(c)
-
-
-# log = SaveLog("jack", "Fatfinger", "Test", "")
-# msg = json.dumps({"exchange": "exchange", "orderId": 'orderId', "symbol": "symbol", "type": "LIMIT",
-#                   "side": 'side', "price": 0.003520, "size": "size"})
-# log.info(msg)

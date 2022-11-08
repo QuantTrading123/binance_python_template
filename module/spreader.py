@@ -4,13 +4,10 @@ import time
 import logging
 import sys
 import socket
-import websockets
 from math import floor
 from pricer import Pricer
 from functools import partial
-
 from predictor import Predictor
-from position import Positions
 from datetime import timedelta, datetime
 from log_format import SaveLog
 from order_book import OrderBook
@@ -20,13 +17,6 @@ import traceback
 from binance.streams import BinanceSocketManager
 import telegram
 
-#todo kluge
-#HIGHLY INSECURE
-ssl_context = ssl.SSLContext()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
-import requests
-from json import loads
 
 
 class Spreader:
@@ -65,20 +55,6 @@ class Spreader:
         )
         self.spread_prices = None
         self.remember_quotos = None 
-        self.api = api
-    async def listen_ws(self,topics,endpoint) :
-        websocket = await websockets.connect(endpoint,ssl=ssl_context)
-        print(topics)
-        await websocket.send(json.dumps({
-        "method": "SUBSCRIBE",
-        "params":
-        [
-        topics
-        ],
-        "id": 1
-        }))
-        #response = await websocket.recv()
-        return websocket
     async def Update_orderbook(self,task_queue, symbol):
         ws = self.bm.futures_depth_socket(symbol)
         async with ws as wscm:
@@ -116,7 +92,6 @@ class Spreader:
                     and self.predictor.ref_spreads.is_warmed_up \
                     and self.predictor.target_spreads.is_warmed_up:
                     print("Time to create open orders")
-                    #await self.pricer.create_open_orders(self.spread_prices)
                     await task_queue.put(
                             partial(self.pricer.create_open_orders,
                             self.predictor.spread_quotes)

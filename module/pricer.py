@@ -6,11 +6,9 @@ import logging
 import sys
 import random
 import string
-from simulator.Order import Order
 import telegram
 import hashlib
 
-sys.path.append('./trading-simulator/module')
 from prettytable import PrettyTable
 
 # Price precision for submitting orders
@@ -58,29 +56,8 @@ def side_to_price(side, x):
     elif side == "SELL":
         return neg
 
-
-class TwoWayDict(dict):
-    def __setitem__(self, key, value):
-        # Remove any previous connections with these values
-        if key in self:
-            del self[key]
-        if value in self:
-            del self[value]
-        dict.__setitem__(self, key, value)
-        dict.__setitem__(self, value, key)
-
-    def __delitem__(self, key):
-        dict.__delitem__(self, self[key])
-        dict.__delitem__(self, key)
-
-    def __len__(self):
-        """Returns the number of connections"""
-        return dict.__len__(self) // 2
-
-
 class Pricer:
-    active_orders = {}
-    open_close_mapping = TwoWayDict()
+
 
     def __init__(self, api, ref_symbol, target_symbol, logger,configs):
         self.api = api
@@ -95,9 +72,6 @@ class Pricer:
         self.order_id = {}
     async def manage_trade(self, trade, spread_prices):
         async with self.lock2:
-            order_tasks = []
-            size = 0
-        
             if trade['c'] in self.order_id.values():
                 size = float(trade["l"])
                 symbol = trade['s']
@@ -119,20 +93,17 @@ class Pricer:
                     price = spread_prices.get_price(symbol)
                     side = spread_prices.get_side(symbol)
                     price = round_price_ref(price * (1 + side_to_price(side, 0.01)),self.config.PRECISION_PRICE_REF)
-                    #new_size = trunc_amount_ref(origin_size-size,self.config.PRECISION_AMOUNT_REF)
                 if symbol == self.target_symbol :
                     origin_size = trunc_amount_target(origin_size,self.config.PRECISION_AMOUNT_TARGET)
                     price = spread_prices.get_price(symbol)
                     side = spread_prices.get_side(symbol)
                     price = round_price_target(price * (1 + side_to_price(side, 0.01)),self.config.PRECISION_PRICE_TARGET)
-                    #new_size = trunc_amount_target(origin_size-size,self.config.PRECISION_AMOUNT_TARGET)
-                print("交易 :",trade)
+
                 if trade['X'] == 'EXPIRED':
 
                     await self.api.futures_create_order(symbol=symbol, side=side , price=  price, quantity= origin_size,  newClientOrderId= trade['c'], type='LIMIT', timeInForce="FOK", newOrderRespType = "RESULT", recvWindow=5000)
             else :
-                print("沒這個order id 拉 fuck steve")
-
+                pass
     async def create_open_orders(self, spread_prices):
         print("===== create open orders =====")
         async with self.lock:
@@ -152,37 +123,29 @@ class Pricer:
             
             self.order_id[self.ref_symbol] = order_reference
             self.order_id[self.target_symbol] = order_target
-            
             price = spread_prices.get_price(self.ref_symbol)
             price = round_price_ref(price,self.config.PRECISION_PRICE_REF)
             size = spread_prices.get_size(self.ref_symbol)
             size = trunc_amount_ref(size,self.config.PRECISION_AMOUNT_REF)
             side = spread_prices.get_side(self.ref_symbol)
-            #first_trade_alert(self.ref_symbol, price, side, size)
             print("price and size :", price, size)
             if side == 'BUY':
                 order_tasks.append(self.api.futures_create_order(
                     symbol=self.ref_symbol, side="BUY", price=price, quantity=size, newClientOrderId=order_reference, type='LIMIT', timeInForce="FOK", newOrderRespType = "RESULT", recvWindow=5000))
-                #order_tasks.append(self.api.futures_create_order(
-                #    symbol=self.ref_symbol, side="BUY", quantity=size, newClientOrderId=order_key_buy, type= "MARKET", recvWindow=5000))
             elif side == 'SELL':
                 order_tasks.append(self.api.futures_create_order(
                     symbol=self.ref_symbol, side="SELL", price=price, quantity=size, newClientOrderId=order_reference, type='LIMIT', timeInForce="FOK", newOrderRespType = "RESULT", recvWindow=5000))
-                
             price = spread_prices.get_price(self.target_symbol)
             price = round_price_target(price,self.config.PRECISION_PRICE_TARGET)
             size = spread_prices.get_size(self.target_symbol)
             size = trunc_amount_target(size,self.config.PRECISION_AMOUNT_TARGET)
             side = spread_prices.get_side(self.target_symbol)
-            print("price and size :", price, size)
             if side == 'BUY':
                 order_tasks.append(self.api.futures_create_order(
                     symbol=self.target_symbol, side="BUY", price=price, quantity=size, newClientOrderId=order_target, type='LIMIT', timeInForce="FOK", newOrderRespType = "RESULT", recvWindow=5000))
             elif side == 'SELL':
                 order_tasks.append(self.api.futures_create_order(
                     symbol=self.target_symbol, side="SELL", price=price, quantity=size, newClientOrderId=order_target, type='LIMIT', timeInForce="FOK", newOrderRespType = "RESULT", recvWindow=5000))
-
-
             result = await asyncio.gather(*order_tasks)
             
                

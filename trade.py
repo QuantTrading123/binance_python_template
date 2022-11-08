@@ -4,7 +4,6 @@ import os,sys
 import threading
 #設定當前工作目錄，放再import其他路徑模組之前
 os.chdir(sys.path[0])
-sys.path.append('./simulator')
 sys.path.append('./module')
 from spreader import Spreader
 from binance.client import AsyncClient
@@ -20,9 +19,6 @@ async def main():
     binance_client2 = await AsyncClient.create(api_key=binance_key\
                                                 ,api_secret=binance_secret)
     
-    #binance_client = await AsyncClient.create()
-
-    #binance_client2 = await AsyncClient.create()
     configs = Two_symbol_Config()
     spreader = Spreader(binance_client, binance_client2, configs)
     await spreader.execute()

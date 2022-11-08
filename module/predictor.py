@@ -1,7 +1,3 @@
-from asyncio.log import logger
-#from pty import slave_open
-#from turtle import position
-#from attr import s
 import numpy as np
 import collections
 import time
@@ -144,16 +140,13 @@ class Predictor:
 
     def update_spreads(self, orderbook):
         if self.ref_symbol in orderbook and self.target_symbol in orderbook and orderbook[self.ref_symbol]['timestamp'] != self.ref_timestamp and orderbook[self.target_symbol]['timestamp'] != self.target_timestamp :
-            # if True :
             self.target_timestamp = orderbook[self.target_symbol]['timestamp']
             self.ref_timestamp = orderbook[self.ref_symbol]['timestamp']
-            #print(self.ref_timestamp,self.target_timestamp)
             ref_ask, target_ask = self.get_asks(orderbook)
             ref_bid, target_bid = self.get_bids(orderbook)
             ref_mid_price = (ref_ask + ref_bid) / 2  # ref mid price
             target_mid_price = (target_ask + target_bid) / \
-                2  # target mid price
-            #print(self.ref_timestamp - self.target_timestamp)
+                2 
             print(f"ref :{ref_mid_price} , target : {target_mid_price}")
             if ref_ask and target_ask and ref_bid and target_bid:
                 self.ref_spreads.update(ref_mid_price)
@@ -195,8 +188,6 @@ class Predictor:
             
     def close_Quotes_setting(self, ref_trade_price, target_trade_price):
         slippage = self.slippage
-
-        # up -> size < 0 -> buy -> ask
         self.spread_quotes.set_price(
             self.ref_symbol, ref_trade_price * (1 - self.slippage_number(slippage, self.ref_size)))
         self.spread_quotes.set_price(
